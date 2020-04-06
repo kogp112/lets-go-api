@@ -1,1 +1,2 @@
-# go-graphQL-mock-api
+# Create API by golang & graphQL
+
