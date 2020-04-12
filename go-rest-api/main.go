@@ -6,7 +6,8 @@ import (
     "encoding/json"
     "log"
     "net/http"
-    "github.com/gorilla/mux"
+		"github.com/gorilla/mux"
+		"strconv"
 )
 
 type event struct {
@@ -25,20 +26,41 @@ var events = fetchEventsAll{
   },
 }
 
-func fetch(w http.ResponseWriter, r *http.Request) {
+func get(w http.ResponseWriter, r *http.Request) {
   var newEvent event
   reqBody, err := ioutil.ReadAll(r.Body)
   if err != nil {
     fmt.Fprintf(w, "error happend")
   }
   json.Unmarshal(reqBody, &newEvent)
-  events = append(events, newEvent)
-  w.WriteHeader(http.StatusCreated)
-  json.NewEncoder(w).Encode(newEvent)
+  json.NewEncoder(w).Encode(events[1])
+}
+
+func params(w http.ResponseWriter, r *http.Request) {
+  pathParams := mux.Vars(r)
+  w.Header().Set("Content-Type", "application/json")
+
+  userID := 1
+  var err error
+  if val, ok := pathParams["userID"]; ok {
+    userID, err = strconv.Atoi(val)
+    if err != nil {
+      w.WriteHeader(http.StatusInternalServerError)
+      w.Write([]byte(`{"message": "nothing userID!"}`))
+      return
+    }
+  }
+  query := r.URL.Query()
+  location := query.Get("location")
+
+  w.Write([]byte(fmt.Sprintf(`{"userID": %d, "location": "%s" }`, userID, location)))
 }
 
 func main() {
   router := mux.NewRouter().StrictSlash(true)
-  router.HandleFunc("/", fetch)
+  api := router.PathPrefix("/lets-go-api/v1").Subrouter()
+  router.HandleFunc("/", get).Methods(http.MethodGet)
+  api.HandleFunc("/id/{userID}", params).Methods(http.MethodGet)
+
   log.Fatal(http.ListenAndServe(":8081", router))
 }
