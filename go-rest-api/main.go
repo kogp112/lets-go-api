@@ -2,21 +2,19 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
-	"io/ioutil"
-	"log"
 	"net/http"
-	"strconv"
 
 	"github.com/gorilla/mux"
 )
 
+// struct is a collection fields
 type event struct {
 	ID   string `json:"ID"`
 	Name string `json:"Title"`
 	Age  int    `json:"Age"`
 }
 
+// slice doesn't have size, it's dinamically flexible and common
 type fetchEventsAll []event
 
 var events = fetchEventsAll{
@@ -27,41 +25,25 @@ var events = fetchEventsAll{
 	},
 }
 
-func get(w http.ResponseWriter, r *http.Request) {
-	var newEvent event
-	reqBody, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		fmt.Fprintf(w, "error happend")
-	}
-	json.Unmarshal(reqBody, &newEvent)
-	json.NewEncoder(w).Encode(events[1])
-}
-
-func params(w http.ResponseWriter, r *http.Request) {
-	pathParams := mux.Vars(r)
+func getEvents(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-
-	userID := 1
-	var err error
-	if val, ok := pathParams["userID"]; ok {
-		userID, err = strconv.Atoi(val)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(`{"message": "nothing userID!"}`))
-			return
+	params := mux.Vars(r)
+	for _, item := range events {
+		if item.ID == params["userID"] {
+			json.NewEncoder(w).Encode(item)
+			break
 		}
+		return
 	}
-	query := r.URL.Query()
-	location := query.Get("location")
-
-	w.Write([]byte(fmt.Sprintf(`{"userID": %d, "location": "%s" }`, userID, location)))
+	json.NewEncoder(w).Encode(&event{})
 }
 
 func main() {
+	// initialize new router
 	router := mux.NewRouter().StrictSlash(true)
-	api := router.PathPrefix("/lets-go-api/v1").Subrouter()
-	router.HandleFunc("/", get).Methods(http.MethodGet)
-	api.HandleFunc("/id/{userID}", params).Methods(http.MethodGet)
+	// create api endpoints
+	router.HandleFunc("/events", getEvents).Methods(http.MethodGet)
+	router.HandleFunc("/events/{userID}", getEvents).Methods(http.MethodGet)
 
-	log.Fatal(http.ListenAndServe(":8081", router))
+	http.ListenAndServe(":8081", router)
 }
