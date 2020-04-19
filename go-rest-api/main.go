@@ -37,13 +37,25 @@ func getPerson(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(&Person{})
 }
 
-func createPersons(w http.ResponseWriter, r *http.Request) {
+func createPerson(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	var data Person
 	_ = json.NewDecoder(r.Body).Decode(&data)
 	data.ID = strconv.Itoa(rand.Intn(1000000))
 	persons = append(persons, data)
 	json.NewEncoder(w).Encode(&data)
+}
+
+func deletePerson(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	params := mux.Vars(r)
+	for index, item := range persons {
+		if item.ID == params["userID"] {
+			persons = append(persons[:index], persons[index+1:]...)
+			break
+		}
+	}
+	json.NewEncoder(w).Encode(persons)
 }
 
 func main() {
@@ -55,7 +67,7 @@ func main() {
 	// create api endpoints
 	router.HandleFunc("/events", getPersons).Methods(http.MethodGet)
 	router.HandleFunc("/events/{userID}", getPerson).Methods(http.MethodGet)
-	router.HandleFunc("/events", createPersons).Methods(http.MethodPost)
-
+	router.HandleFunc("/events", createPerson).Methods(http.MethodPost)
+	router.HandleFunc("/events/{userID}", deletePerson).Methods(http.MethodDelete)
 	http.ListenAndServe(":8081", router)
 }
